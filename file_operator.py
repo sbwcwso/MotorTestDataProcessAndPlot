@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-09-26, 2:11:37 pm
+# Last Modified: Tuesday, 2019-11-05, 5:26:25 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -50,6 +50,10 @@ class FileOperator():
         """获取给定路径下所有后缀为 xlsx 的文件"""
         self.excel_files = self._get_spcified_suffix('.xlsx')
 
+    def get_ergs(self):
+        """获取指定路径下所有后缀为 erg 的文件"""
+        self.erg_files = self._get_spcified_suffix(".erg")
+
     def get_csvs(self):
         """获取当前路径下所有的 csv 文件"""
         self.csv_files = self._get_spcified_suffix('.csv')
@@ -76,6 +80,28 @@ class FileOperator():
             flag = False  # 变量 中不带有单位
         self.original_data = self.original_data.dropna()
         return (flag, self.original_data)
+
+    def splice_ergs(self):
+        """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
+        dfs = list()
+        paras = list()
+        for erg_file in self.erg_files:
+            if len(dfs) == 0:
+                with open(erg_file, 'r', encoding="unicode_escape") as f:
+                    lines = f.readlines()
+                    start_row = int(lines[0])
+                    para_nums = int(lines[3])
+                for line in lines[4:4+para_nums]:
+                    paras.append("{}[{}]".format(line.split(";")[0],
+                                                 line.split(";")[1]))
+            dfs.append(pd.read_csv(erg_file, skiprows=start_row,
+                                   header=None, delimiter=";"))
+        result_data = pd.concat(dfs)
+        result_data.rename(columns=dict(zip(result_data.columns, paras)),
+                           inplace=True)
+        file_name = os.path.join(self.path, "result.csv")
+        # ! windows 要保存为带 BOM 的 utf-8，不然打开会乱码
+        result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
 
     def make_result_dir(self):
         """创建结果文件夹"""
@@ -107,15 +133,27 @@ class FileOperator():
         self.get_csvs()
         self.make_result_dir()
 
+
+def merge_ergs(path):
+    """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
+    file_operator = FileOperator(path)
+    file_operator.get_ergs()
+    file_operator.splice_ergs()
+
+
 if __name__ == "__main__":
-    test = FileOperator(r'C:\Users\lijunjie3\OneDrive\工作电脑文件\5032\01外特性试验')
-    test.get_excels()
-    test.excel2csv()
-    test.get_csvs()
-    flag, df = test.splice_csvs()
-    test.make_result_dir()
-    test.save_to_csv('original_data.csv', df)
-    if flag:
-        print("变量带有单位")
-    else:
-        print("变量不带单位")
+    # !测试多个 excel 文件转换为 csv 并判断是否带有单位的功能
+    # test = FileOperator(r'C:\Users\lijunjie3\OneDrive\工作电脑文件\5032\01外特性试验')
+    # test.get_excels()
+    # test.excel2csv()
+    # test.get_csvs()
+    # flag, df = test.splice_csvs()
+    # test.make_result_dir()
+    # test.save_to_csv('original_data.csv', df)
+    # if flag:
+    #     print("变量带有单位")
+    # else:
+    #     print("变量不带单位")
+    # ! 测试合并 erg 文件的功能
+    path = input("请输入文件路径:")
+    merge_ergs(path)
