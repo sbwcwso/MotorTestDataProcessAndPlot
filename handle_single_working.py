@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Tuesday, 2019-11-05, 4:32:55 pm
+# Last Modified: Tuesday, 2019-11-05, 10:08:35 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -48,5 +48,5 @@ if __name__ == "__main__":
     # path = r'E:\OneDrive\工作电脑文件\IVET 数据处理\1MEB_UAES_Base_plus_freilauf\IVET1'
     # path = r'E:\OneDrive\工作电脑文件\IVET 数据处理\3MEB_UAES_Base_plus_eff\IVET1'
     path = input('请输入数据所在的文件路径：')
-    working = HandleSingleWorking(path, test_condition, convert_to_csv=False)
+    working = HandleSingleWorking(path, test_condition, convert_to_csv=True)
     working.run()
