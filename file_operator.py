@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Tuesday, 2019-11-05, 5:26:25 pm
+# Last Modified: Friday, 2019-11-29, 9:53:22 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -62,15 +62,14 @@ class FileOperator():
         """合并读取文件夹中的 csv 文件，并判断变量中是否带有单位
 
         Returns:
-            flag: True:带有单位， False: 不带有单位
             self.original_data: 合并后的 DataFrame数据
         """
         dfs = list()
         flag = True
         for csv_file in self.csv_files:
-            dfs.append(pd.read_csv(csv_file, encoding='gbk',
+            dfs.append(pd.read_csv(csv_file, encoding='utf-8-sig',
                                    low_memory=False))
-        # * 转换表头不相同的 csv 文件时，以第一个读取的 csv 表头为准
+        # * 转换表头不相同(有的不带单位，有的带有单位)的 csv 文件时，以第一个读取的 csv 表头为准
         if len(dfs) > 1 and list(dfs[-1].columns) != list(dfs[0].columns):
             dfs[-1].rename(columns=dict(zip(list(dfs[-1].columns),
                                         list(dfs[0].columns))), inplace=True)
@@ -78,11 +77,14 @@ class FileOperator():
         # * 根据原始数据中是否含有 Nan 来确定变量是否带有单位
         if pd.isnull(dfs[0]).any().sum() != 0:
             flag = False  # 变量 中不带有单位
+        #TODO 完善此处逻辑
+        flag = True
         self.original_data = self.original_data.dropna()
         return (flag, self.original_data)
 
     def splice_ergs(self):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
+        #为了方便 windows 系统打开， 将编码统一为 utf-8-sig
         dfs = list()
         paras = list()
         for erg_file in self.erg_files:
@@ -92,8 +94,11 @@ class FileOperator():
                     start_row = int(lines[0])
                     para_nums = int(lines[3])
                 for line in lines[4:4+para_nums]:
-                    paras.append("{}[{}]".format(line.split(";")[0],
-                                                 line.split(";")[1]))
+                    if line.split(";")[1]:
+                        paras.append("{} [{}]".format(line.split(";")[0],
+                                                      line.split(";")[1]))
+                    else:
+                        paras.append("{}".format(line.split(";")[0]))
             dfs.append(pd.read_csv(erg_file, skiprows=start_row,
                                    header=None, delimiter=";"))
         result_data = pd.concat(dfs)
@@ -127,9 +132,12 @@ class FileOperator():
 
     def run(self, convert_flag):
         """转换 excel 文件到 csv 并创建结果文件夹"""
-        self.get_excels()
-        if convert_flag:
+        if convert_flag == 1:
+            self.get_excels()
             self.excel2csv()
+        elif convert_flag == 2:
+            self.get_ergs()
+            self.splice_ergs()
         self.get_csvs()
         self.make_result_dir()
 
@@ -143,17 +151,6 @@ def merge_ergs(path):
 
 if __name__ == "__main__":
     # !测试多个 excel 文件转换为 csv 并判断是否带有单位的功能
-    # test = FileOperator(r'C:\Users\lijunjie3\OneDrive\工作电脑文件\5032\01外特性试验')
-    # test.get_excels()
-    # test.excel2csv()
-    # test.get_csvs()
-    # flag, df = test.splice_csvs()
-    # test.make_result_dir()
-    # test.save_to_csv('original_data.csv', df)
-    # if flag:
-    #     print("变量带有单位")
-    # else:
-    #     print("变量不带单位")
     # ! 测试合并 erg 文件的功能
     path = input("请输入文件路径:")
     merge_ergs(path)
