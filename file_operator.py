@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Friday, 2019-11-29, 9:53:22 am
+# Last Modified: Wednesday, 2019-12-04, 5:29:15 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -19,6 +19,7 @@
 import os
 from subprocess import call
 import pandas as pd
+import locale
 
 
 class FileOperator():
@@ -37,6 +38,9 @@ class FileOperator():
         for excel_file in self.excel_files:
             csv_file = os.path.splitext(excel_file)[0] + ".csv"
             call(['cscript.exe', self.vbs_path, excel_file, csv_file])
+            # !根据系统默认的编码，将 csv 的编码格式统一为 utf-8-sig
+            df = pd.read_csv(csv_file, encoding=locale.getdefaultlocale()[1])
+            df.to_csv(csv_file, index=0, encoding="utf-8-sig")
 
     def _get_spcified_suffix(self, suffix):
         """获取指定后缀的文件名"""
@@ -79,7 +83,8 @@ class FileOperator():
             flag = False  # 变量 中不带有单位
         #TODO 完善此处逻辑
         flag = True
-        self.original_data = self.original_data.dropna()
+        #TODO 完善逻辑
+        # self.original_data = self.original_data.dropna()
         return (flag, self.original_data)
 
     def splice_ergs(self):
@@ -89,6 +94,7 @@ class FileOperator():
         paras = list()
         for erg_file in self.erg_files:
             if len(dfs) == 0:
+                # erg 文件采用的是此种编码
                 with open(erg_file, 'r', encoding="unicode_escape") as f:
                     lines = f.readlines()
                     start_row = int(lines[0])
@@ -105,7 +111,7 @@ class FileOperator():
         result_data.rename(columns=dict(zip(result_data.columns, paras)),
                            inplace=True)
         file_name = os.path.join(self.path, "result.csv")
-        # ! windows 要保存为带 BOM 的 utf-8，不然打开会乱码
+        # ! windows 要保存为带 BOM 的 utf-8，不然摄氏度符号会乱码
         result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
 
     def make_result_dir(self):

@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-09-26, 9:58:02 am
+# Last Modified: Wednesday, 2019-12-04, 5:01:51 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -72,7 +72,8 @@ def plot_eff_map(x, y, z, paras):
     plt.title(paras['title'], fontsize=12)
     plt.xlabel('Speed [rpm]', fontsize=12)
     plt.ylabel('Torque [Nm]', fontsize=12)
-    legend_point = np.hstack([np.nanmin(z), np.arange(70, 90, 5),
+    legend_point_min = np.nanmin(z) if np.nanmin(z) < 70 else 60
+    legend_point = np.hstack([legend_point_min, np.arange(70, 90, 5),
                               np.arange(90, math.ceil(np.nanmax(z)) + 1, 1)])
     colors = ['#0000FF', '#3333CC', '#666699', '#999965', '#CCCC33', '#FFFF00',
               '#FFE200', '#FFC600', '#FFAA00', '#FF8D00', '#FF7100', '#FF5400',
