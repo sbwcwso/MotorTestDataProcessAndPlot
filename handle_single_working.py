@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-12-05, 2:11:33 pm
+# Last Modified: Thursday, 2019-12-05, 2:39:48 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -19,14 +19,14 @@
 from file_operator import FileOperator
 from data_process import OCProcess, ASCProcess, EffProcess
 
-TEST_CONDITION = {"open_circuit": OCProc3ess,
+TEST_CONDITION = {"open_circuit": OCProcess,
                   "ASC": ASCProcess,
                   "efficiency": EffProcess}
 
 
 class HandleSingleWorking():
     def __init__(self, path, test_condition, convert=0):
-        self.file_operatcor = FileOperator(path)
+        self.file_operator = FileOperator(path)
         self.test = TEST_CONDITION[test_condition](self.file_operator)
         self.convert = convert
 
