@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Wednesday, 2019-12-04, 5:29:15 pm
+# Last Modified: Thursday, 2019-12-05, 5:32:28 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -71,6 +71,7 @@ class FileOperator():
         dfs = list()
         flag = True
         for csv_file in self.csv_files:
+            # TODO  记得改回
             dfs.append(pd.read_csv(csv_file, encoding='utf-8-sig',
                                    low_memory=False))
         # * 转换表头不相同(有的不带单位，有的带有单位)的 csv 文件时，以第一个读取的 csv 表头为准

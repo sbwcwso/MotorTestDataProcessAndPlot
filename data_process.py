@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Friday, 2019-11-01, 10:42:03 am
+# Last Modified: Thursday, 2019-12-05, 5:47:43 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -113,7 +113,8 @@ class ASCProcess(DataProcess):
                      'torque_real': 'M_HMmess [Nm]',
                      'current_u': 'PA1_IRMS_1 [A]',
                      'current_v': 'PA1_IRMS_2 [A]',
-                     'current_w': 'PA1_IRMS_3_new [A]',
+                     # TODO 后缀 _new 的问题
+                     'current_w': 'PA1_IRMS_3 [A]',
                      'lew_motor_temperatrue': 'LEW_SO_T_P1 [°C]',
                      'lew_motor_flow': 'LEW_SO_Q_P1 [l/min]',
                      'stator_temperatrue': 'T_MOTOR [°C]',
