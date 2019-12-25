@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-12-05, 5:47:43 pm
+# Last Modified: Wednesday, 2019-12-25, 9:26:41 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -45,7 +45,9 @@ class DataProcess():
 
     def get_plot_data(self):
         """主要对相关变量按照 counter 求取均值"""
-        self.plot_data = self.used_data.groupby(self.vars['counter']).mean()
+        #TODO 取最后十个点再求取平均值
+        self.plot_data = self.used_data.groupby(self.vars['counter']).tail(20)
+        self.plot_data = self.plot_data.groupby(self.vars['counter']).mean()
         # 按转速设定值进行排序
         self.plot_data.sort_values(self.vars['speed'], inplace=True)
 
@@ -114,7 +116,7 @@ class ASCProcess(DataProcess):
                      'current_u': 'PA1_IRMS_1 [A]',
                      'current_v': 'PA1_IRMS_2 [A]',
                      # TODO 后缀 _new 的问题
-                     'current_w': 'PA1_IRMS_3 [A]',
+                     'current_w': 'PA1_IRMS_3_new [A]',
                      'lew_motor_temperatrue': 'LEW_SO_T_P1 [°C]',
                      'lew_motor_flow': 'LEW_SO_Q_P1 [l/min]',
                      'stator_temperatrue': 'T_MOTOR [°C]',
@@ -171,9 +173,14 @@ class EffProcess(DataProcess):
     """效率数据处理与画图"""
     def __init__(self, file_operator):
         self.vars = {'counter': 'speed_step',
-                     'speed': 'N_HM [1/min]',
-                     'speed_PA': 'PA1_Spd [U/min]',
+                     'speed': 'SO_N_HM [1/min]',
+                     'speed_real': 'N_HM [1/min]',
                      'torque_real': 'M_HMmess [Nm]',
+                     'torque_set': 'SO_M_VM [Nm]',
+                     'power_AC1': 'PA1_P_1 [W]',
+                     'power_AC2': 'PA1_P_2 [W]',
+                     'power_DC': 'PA1_P_4 [W]',
+                     'power_M': 'PA1_PM [W]',
                      'sys_eff': 'Eff_Sys_WT [%]',
                      'motor_eff': 'Eff_Motor_PA [%]',
                      'peu_eff': 'Eff_DCtoAC_WT [%]',
@@ -221,19 +228,46 @@ class EffProcess(DataProcess):
     def handle_used_data(self):
         """对 used_data 进行处理"""
         # * 处理效率数据中的功率分析仪转速异常点
-        self.used_data = self.used_data[
-            np.logical_not(self.used_data[self.vars['speed_PA']] > 1e10)]
-        self.used_data = self.used_data[np.logical_and(
-            self.used_data[self.vars['sys_eff']] >= 0,
-            self.used_data[self.vars['sys_eff']] <= 100
-            )]
+        # self.used_data = self.used_data[
+        #     np.logical_not(self.used_data[self.vars['speed_PA']] > 1e10)]
+        # self.used_data = self.used_data[np.logical_and(
+        #     self.used_data[self.vars['sys_eff']] >= 0,
+        #     self.used_data[self.vars['sys_eff']] <= 100
+        #     )]
 
-        self.used_data = self.used_data[np.logical_and(
-            self.used_data[self.vars['motor_eff']] >= 0,
-            self.used_data[self.vars['motor_eff']] <= 100
-            )]
+        # self.used_data = self.used_data[np.logical_and(
+        #     self.used_data[self.vars['motor_eff']] >= 0,
+        #     self.used_data[self.vars['motor_eff']] <= 100
+        #     )]
 
-        self.used_data = self.used_data[np.logical_and(
-            self.used_data[self.vars['peu_eff']] >= 0,
-            self.used_data[self.vars['peu_eff']] <= 100
-            )]
+        # self.used_data = self.used_data[np.logical_and(
+        #     self.used_data[self.vars['peu_eff']] >= 0,
+        #     self.used_data[self.vars['peu_eff']] <= 100
+        #     )]
+        # * 根据相关的值计算效率
+        self.used_data[self.vars['power_M']] = 1 / 9.55 * self.used_data[self.vars['speed_real']] * self.used_data[self.vars['torque_real']]
+        sign = (self.used_data[self.vars['torque_set']] > 0) * 2 - 1
+        self.used_data[self.vars['motor_eff']] = ( self.used_data[self.vars['power_M']]  / ( self.used_data[self.vars['power_AC1']] + self.used_data[self.vars['power_AC2']]) ) ** sign * 100
+        self.used_data[self.vars['peu_eff']] = ( ( self.used_data[self.vars['power_AC1']] + self.used_data[self.vars['power_AC2']]) / self.used_data[self.vars['power_DC']] ) ** sign * 100
+        self.used_data[self.vars['sys_eff']] = (self.used_data[self.vars['power_M']] / self.used_data[self.vars['power_DC']]) ** sign * 100
+        for eff in ['motor_eff', 'peu_eff', 'sys_eff']:
+            self.used_data[self.vars[eff]][np.isinf(self.used_data[self.vars[eff]])] = 0
+            self.used_data[self.vars[eff]][np.logical_or(self.used_data[self.vars[eff]] < 0,  \
+                self.used_data[self.vars[eff]] > 100) ] = 0
+        
+
+def sort_by_time(data):
+    """ 根据实验数据的记录日期对记录数据进行排序
+
+    Args:
+        data[DataFrame]: 待排序的 DataFrame
+    Returns:
+        None
+    """
+    # ! 必须选择稳定的排序算法，默认的是 quicksort
+    data.sort_values('PST_UH_Sekunde [Unit_Sec]', inplace=True, kind='mergesort')  # second
+    data.sort_values('PST_UH_Minute [Unit_Min]', inplace=True, kind='mergesort')  # minute
+    data.sort_values('PST_UH_Stunde [Unit_Hou]', inplace=True, kind='mergesort')  # hour
+    data.sort_values('PST_UH_Tag [Unit_Day]', inplace=True, kind='mergesort')  # day
+    data.sort_values('PST_UH_Monat [Unit_Mon]', inplace=True, kind='mergesort')  # month
+    data.sort_values('PST_UH_Jahr [Unit_Yea]', inplace=True, kind='mergesort')  # year
