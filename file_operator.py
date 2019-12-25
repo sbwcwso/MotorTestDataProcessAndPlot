@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-12-05, 5:32:28 pm
+# Last Modified: Tuesday, 2019-12-24, 1:02:18 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -20,7 +20,7 @@ import os
 from subprocess import call
 import pandas as pd
 import locale
-
+from data_process import sort_by_time
 
 class FileOperator():
     """文件读写操作"""
@@ -71,7 +71,7 @@ class FileOperator():
         dfs = list()
         flag = True
         for csv_file in self.csv_files:
-            # TODO  记得改回
+            # TODO  指定编码格式，可能需要修改
             dfs.append(pd.read_csv(csv_file, encoding='utf-8-sig',
                                    low_memory=False))
         # * 转换表头不相同(有的不带单位，有的带有单位)的 csv 文件时，以第一个读取的 csv 表头为准
@@ -111,6 +111,7 @@ class FileOperator():
         result_data = pd.concat(dfs)
         result_data.rename(columns=dict(zip(result_data.columns, paras)),
                            inplace=True)
+        sort_by_time(result_data)
         file_name = os.path.join(self.path, "result.csv")
         # ! windows 要保存为带 BOM 的 utf-8，不然摄氏度符号会乱码
         result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
@@ -130,7 +131,7 @@ class FileOperator():
             df (DataFrame): 要写入的 DataFrame
         """
         csv_name = '_'.join([self.operator_name, csv_name])
-        df.to_csv(os.path.join(self.result_dir, csv_name))
+        df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="utf-8-sig")
 
     def save_to_png(self, fig, name):
         """保存图片到 result 文件夹下"""
