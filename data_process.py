@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Wednesday, 2019-12-25, 9:26:41 am
+# Last Modified: Tuesday, 2019-12-31, 9:32:11 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -21,6 +21,7 @@ import numpy as np
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from figure_plot import plot_double_y, plot_eff_map
+import math
 
 
 class DataProcess():
@@ -30,13 +31,11 @@ class DataProcess():
         self.original_data = None
         self.used_data = None
         self.plot_data = None
+        self.mat_data = dict()
 
     def get_original_data(self):
         """获取原始数据"""
-        flag, self.original_data = self.file_operator.splice_csvs()
-        if not flag:  # 去掉变量中的单位
-            for key in self.vars.keys():
-                self.vars[key] = self.vars[key].split()[0]
+        self.original_data = self.file_operator.splice_csvs()
 
     def get_used_data(self):
         """根据 self.vars 中的值来获取需要的变量"""
@@ -189,6 +188,7 @@ class EffProcess(DataProcess):
         }
         super().__init__(file_operator)
         self.figs = dict()
+        self.paras_dict = dict()  # 最后写入 csv 中的相关参数列表
 
     def data_process(self):
         """进行数据处理"""
@@ -208,6 +208,7 @@ class EffProcess(DataProcess):
                 .format(stator_temperatrue)
             paras = {'title': self.file_operator.operator_name + " " + eff +
                      "\n" + temperature_operator}
+            paras['name'] = eff
             fig = self._plot(x, y, z, paras)
             self.file_operator.save_to_png(fig, self.file_operator
                                            .operator_name + eff + '.png')
@@ -215,35 +216,75 @@ class EffProcess(DataProcess):
 
     def _plot(self, x, y, z, paras):
         """对绘图点进行处理， 并调用绘图函数"""
-        grid_x, grid_y = np.mgrid[x.min(): x.max(), y.min(): y.max()]
+        grid_x, grid_y = np.mgrid[x.min(): x.max():1, y.min(): y.max():1]
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
         # * 正负效率分别按照实验的最大功率点进行截取
         # TODO 后续可按照外特性曲线进行截取
-        power = grid_x * grid_y
-        grid_z[power > (x * y).max()] = np.nan
-        grid_z[power < (x * y).min()] = np.nan
+        # power = grid_x * grid_y
+        # grid_z[power > (x * y).max()] = np.nan
+        # grid_z[power < (x * y).min()] = np.nan
         # * 调用 map 图画图程序
+        self._get_eff_table_data(grid_x, grid_y, grid_z, paras)
         return plot_eff_map(grid_x, grid_y, grid_z, paras)
+
+    
+    def _get_eff_table_data(self, x, y, z, paras):
+        """效率区间数据的提取"""
+        # * 筛选出正负效率点
+        positive = z[y > 0]
+        positive = positive[~np.isnan(positive)]  # 去除 nan 点
+        positive = positive[np.logical_and(positive <= 100, positive >= 0)]
+
+        negative = z[y < 0]
+        negative = negative[~np.isnan(negative)]
+        negative = negative[np.logical_and(negative <= 100, negative >= 0)]
+        # * 自动生成效率区间
+        bins = [0, 50 ,60 ,70, 80, 90, 95, 97, 100]
+        # * 统计各个效率点所占的百分比
+        positive_histogram = np.histogram(positive, bins=bins, density=True)
+        negative_histogram = np.histogram(negative, bins=bins, density=True)
+        # * 生成绘制 matplotlib 表格能够实别的数据格式
+        positive_percentages = list()
+        negative_percentages = list()
+        motor_interval = []
+        motor_interval_value = []
+        generator_interval = []
+        generator_interval_value = []
+        ge_80  = 0
+        sum_value = 0
+        for index, value in enumerate(reversed(positive_histogram[0] * np.diff(bins) * 100)):
+            sum_value += value
+            positive_percentages.append(["{:d}%-100%".format(list(reversed(positive_histogram[1]))[index + 1]),
+                                        '{:.2f}%'.format(sum_value)])
+            motor_interval.append(positive_percentages[-1][0])
+            motor_interval_value.append(positive_percentages[-1][1])
+            if positive_histogram[1][index] >= 80:
+                ge_80 += value
+        self.paras_dict[paras['name'] + '_motor_ge_80%'] = ge_80
+        ge_80 = 0
+        sum_value = 0
+        for index, value in enumerate(reversed(negative_histogram[0] * np.diff(bins) * 100)):
+            sum_value += value
+            negative_percentages.append(["{:d}%-100%".format(list(reversed(negative_histogram[1]))[index + 1]),
+                                        '{:.2f}%'.format(sum_value)])
+            generator_interval.append(negative_percentages[-1][0])
+            generator_interval_value.append(negative_percentages[-1][1])
+            if negative_histogram[1][index] >= 80:
+                ge_80 += value
+        
+        self.paras_dict[paras['name'] + '_generator_eff_ge_80%'] = ge_80
+        paras['positive_percentages'] = positive_percentages
+        paras['negative_percentages'] = negative_percentages
+        # *将相关的区间数据存入到最后要写入到 csv 中字典中
+        self.paras_dict[paras['name'] + "_motor_eff_interval"] = motor_interval
+        self.paras_dict[paras['name'] + "_motor_eff_interval_value"] = motor_interval_value
+        self.paras_dict[paras['name'] + "_generator_eff_interval"] = generator_interval
+        self.paras_dict[paras['name'] + "_generator_eff_interval_value"] = generator_interval_value
+
 
     def handle_used_data(self):
         """对 used_data 进行处理"""
-        # * 处理效率数据中的功率分析仪转速异常点
-        # self.used_data = self.used_data[
-        #     np.logical_not(self.used_data[self.vars['speed_PA']] > 1e10)]
-        # self.used_data = self.used_data[np.logical_and(
-        #     self.used_data[self.vars['sys_eff']] >= 0,
-        #     self.used_data[self.vars['sys_eff']] <= 100
-        #     )]
-
-        # self.used_data = self.used_data[np.logical_and(
-        #     self.used_data[self.vars['motor_eff']] >= 0,
-        #     self.used_data[self.vars['motor_eff']] <= 100
-        #     )]
-
-        # self.used_data = self.used_data[np.logical_and(
-        #     self.used_data[self.vars['peu_eff']] >= 0,
-        #     self.used_data[self.vars['peu_eff']] <= 100
-        #     )]
+        self.used_data = self.used_data[self.used_data[self.vars['power_M']] < 1e10]
         # * 根据相关的值计算效率
         self.used_data[self.vars['power_M']] = 1 / 9.55 * self.used_data[self.vars['speed_real']] * self.used_data[self.vars['torque_real']]
         sign = (self.used_data[self.vars['torque_set']] > 0) * 2 - 1
@@ -254,6 +295,51 @@ class EffProcess(DataProcess):
             self.used_data[self.vars[eff]][np.isinf(self.used_data[self.vars[eff]])] = 0
             self.used_data[self.vars[eff]][np.logical_or(self.used_data[self.vars[eff]] < 0,  \
                 self.used_data[self.vars[eff]] > 100) ] = 0
+    
+    def save_data(self):
+        """保存相关数据，用于绘图"""
+        #* 求出损耗
+        self.plot_data['motor_loss [kW]'] = ( self.plot_data[self.vars['power_AC1']] +\
+            self.plot_data[self.vars['power_AC2']] - self.plot_data[self.vars['power_M']]) / 1000
+        super().save_data()
+        # * 分别提取出发电和驱动状态下的数据
+        motor_eff = self.plot_data[self.plot_data[self.vars['torque_set']] > 0]
+        generator_eff = self.plot_data[self.plot_data[self.vars['torque_set']] < 0]
+        self.paras_dict['motor_motor_eff [%]'] = motor_eff[self.vars['motor_eff']].array
+        self.paras_dict['motor_motor_speed [rpm]'] = motor_eff[self.vars['speed_real']].array
+        self.paras_dict['motor_motor_torque [Nm]'] = motor_eff[self.vars['torque_real']].array
+        self.paras_dict['motor_motor_loss [kW]'] = motor_eff['motor_loss [kW]'].array
+        self.paras_dict['motor_generator_eff [%]'] = generator_eff[self.vars['motor_eff']].array
+        self.paras_dict['motor_generator_speed [rpm]'] = generator_eff[self.vars['speed_real']].array
+        self.paras_dict['motor_generator_torque [Nm]'] = generator_eff[self.vars['torque_real']].array
+        self.paras_dict['motor_generator_loss [kW]'] = generator_eff['motor_loss [kW]'].array
+
+        #* 求取驱动和发电状态下损耗的最大值
+        self.paras_dict['motor_motor_loss_max [kW]'] = max(self.paras_dict['motor_motor_loss [kW]'])
+        self.paras_dict['motor_generator_loss_max [kW]'] = max(self.paras_dict['motor_generator_loss [kW]'])
+        
+
+        #* 求取发电和驱动状态下最大效率点及其对应的工况点
+        motor_eff_max_index = np.argmax(motor_eff[self.vars['motor_eff']])
+        generator_eff_max_index = np.argmax(generator_eff[self.vars['motor_eff']])
+        self.paras_dict['motor_max_eff [%]'] = motor_eff[self.vars['motor_eff']][motor_eff_max_index]
+        self.paras_dict['motor_max_eff_operator'] = "({} rpm; {} Nm)".format(
+                motor_eff[self.vars['speed']][motor_eff_max_index],
+                motor_eff[self.vars['torque_set']][motor_eff_max_index])
+        self.paras_dict['generator_max_eff [%]'] = generator_eff[self.vars['motor_eff']][generator_eff_max_index]
+        self.paras_dict['generator_max_eff_operator'] = "({} rpm; {} Nm)".format(
+                generator_eff[self.vars['speed']][generator_eff_max_index],
+                generator_eff[self.vars['torque_set']][generator_eff_max_index])
+
+        #* 与画图数据合并后存入 csv 中
+        df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in self.paras_dict.items()]))
+        #* 原始画图数据，先按转速排序，再按转矩排序
+        res = pd.concat([self.plot_data, df], axis=1)
+        
+        
+
+
+        self.file_operator.save_to_csv('result.csv', res)
         
 
 def sort_by_time(data):

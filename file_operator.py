@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Tuesday, 2019-12-24, 1:02:18 pm
+# Last Modified: Friday, 2020-03-06, 10:49:22 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -32,6 +32,7 @@ class FileOperator():
         self.result_dir = self.path + os.path.sep + 'result'
         self.class_path = os.path.split(__file__)[0]
         self.vbs_path = os.path.join(self.class_path, "ExcelToCsv.vbs")
+        self.sub_folder = None
 
     def excel2csv(self):
         """将指定路径下的所有 excel 文件转换为同名的 csv 文件"""
@@ -49,6 +50,15 @@ class FileOperator():
             if os.path.splitext(item)[1] == suffix:
                 res.append(os.path.join(self.path, item))
         return res
+    
+    def get_subfolder(self):
+        """获取指定路径下的所有子文件夹"""
+        self.sub_folder = []
+        for item in os.listdir(self.path):
+            full_path = os.path.join(self.path, item)
+            if os.path.isdir(full_path):
+                self.sub_folder.append(full_path)
+        return self.sub_folder
 
     def get_excels(self):
         """获取给定路径下所有后缀为 xlsx 的文件"""
@@ -69,24 +79,18 @@ class FileOperator():
             self.original_data: 合并后的 DataFrame数据
         """
         dfs = list()
-        flag = True
         for csv_file in self.csv_files:
-            # TODO  指定编码格式，可能需要修改
-            dfs.append(pd.read_csv(csv_file, encoding='utf-8-sig',
-                                   low_memory=False))
-        # * 转换表头不相同(有的不带单位，有的带有单位)的 csv 文件时，以第一个读取的 csv 表头为准
-        if len(dfs) > 1 and list(dfs[-1].columns) != list(dfs[0].columns):
-            dfs[-1].rename(columns=dict(zip(list(dfs[-1].columns),
-                                        list(dfs[0].columns))), inplace=True)
+            #!  依次尝试可能的编码格式
+            try:
+                dfs.append(pd.read_csv(csv_file, encoding='utf-8-sig',
+                                       low_memory=False))
+            except UnicodeDecodeError:
+                dfs.append(pd.read_csv(csv_file, encoding='gbk',
+                                       low_memory=False))
+        #* 假设表头完全相同，直接合并多个数据
         self.original_data = pd.concat(dfs)
-        # * 根据原始数据中是否含有 Nan 来确定变量是否带有单位
-        if pd.isnull(dfs[0]).any().sum() != 0:
-            flag = False  # 变量 中不带有单位
-        #TODO 完善此处逻辑
-        flag = True
-        #TODO 完善逻辑
-        # self.original_data = self.original_data.dropna()
-        return (flag, self.original_data)
+        #* 假设表头含有单位，不再进行额外的判断
+        return self.original_data
 
     def splice_ergs(self):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
@@ -131,7 +135,11 @@ class FileOperator():
             df (DataFrame): 要写入的 DataFrame
         """
         csv_name = '_'.join([self.operator_name, csv_name])
-        df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="utf-8-sig")
+        try:
+            df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="utf-8-sig")
+        except:
+            df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="gbk")
+
 
     def save_to_png(self, fig, name):
         """保存图片到 result 文件夹下"""
