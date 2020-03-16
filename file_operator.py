@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Friday, 2020-03-06, 10:49:22 am
+# Last Modified: Friday, 2020-03-13, 12:59:20 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -91,6 +91,10 @@ class FileOperator():
         self.original_data = pd.concat(dfs)
         #* 假设表头含有单位，不再进行额外的判断
         return self.original_data
+
+    def erg2csv(self, get_average=False):
+        """将 erg 文件转换为 csv 文件"""
+        
 
     def splice_ergs(self):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""

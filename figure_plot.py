@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-12-26, 1:40:14 pm
+# Last Modified: Tuesday, 2020-03-10, 9:30:55 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -96,39 +96,39 @@ def plot_eff_map(x, y, z, paras):
     return fig
 
 
-# def _get_eff_table_data(x, y, z):
-#     """效率区间表格数据提取"""
-#     # * 筛选出正负效率点
-#     positive = z[y > 0]
-#     positive = positive[~np.isnan(positive)]  # 去除 nan 点
-#     positive = positive[np.logical_and(positive <= 100, positive >= 0)]
+def _get_eff_table_data(x, y, z):
+    """效率区间表格数据提取"""
+    # * 筛选出正负效率点
+    positive = z[y > 0]
+    positive = positive[~np.isnan(positive)]  # 去除 nan 点
+    positive = positive[np.logical_and(positive <= 100, positive >= 0)]
 
-#     negative = z[y < 0]
-#     negative = negative[~np.isnan(negative)]
-#     negative = negative[np.logical_and(negative <= 100, negative >= 0)]
-#     # * 自动生成效率区间
-#     second_from_last = math.floor(np.nanmax(z))
-#     if (negative > second_from_last).sum() / negative.size < 0.5 / 100:
-#         second_from_last -= 1
-#     bins = [0, 50, 80, 90, 95, second_from_last, 100]
-#     if second_from_last <= 95:
-#         bins.remove(95)
-#     # * 统计各个效率点所占的百分比
-#     positive_histogram = np.histogram(positive, bins=bins, density=True)
-#     negative_historgram = np.histogram(negative, bins=bins, density=True)
-#     print(positive_histogram)
-#     print(negative_historgram)
-#     # * 生成 matplotlib 能够实别的数据格式
-#     positive_percentages = list()
-#     negative_percentages = list()
-#     for index, value in enumerate(positive_histogram[0] * np.diff(bins) * 100):
-#         positive_percentages.append(["{:d}%-{:d}%".format(positive_histogram[1][index],
-#                                     positive_histogram[1][index+1]),
-#                                     '{:.2f}%'.format(value)])
-#     for index, value in enumerate(negative_historgram[0] * np.diff(bins) * 100):
-#         negative_percentages.append(["{:d}%-{:d}%".format(negative_historgram[1][index],
-#                                     negative_historgram[1][index+1]),
-#                                     '{:.2f}%'.format(value)])
-#     positive_percentages.reverse()
-#     negative_percentages.reverse()
-#     return positive_percentages, negative_percentages
+    negative = z[y < 0]
+    negative = negative[~np.isnan(negative)]
+    negative = negative[np.logical_and(negative <= 100, negative >= 0)]
+    # * 自动生成效率区间
+    second_from_last = math.floor(np.nanmax(z))
+    if (negative > second_from_last).sum() / negative.size < 0.5 / 100:
+        second_from_last -= 1
+    bins = [0, 50, 80, 90, 95, second_from_last, 100]
+    if second_from_last <= 95:
+        bins.remove(95)
+    # * 统计各个效率点所占的百分比
+    positive_histogram = np.histogram(positive, bins=bins, density=True)
+    negative_historgram = np.histogram(negative, bins=bins, density=True)
+    print(positive_histogram)
+    print(negative_historgram)
+    # * 生成 matplotlib 能够实别的数据格式
+    positive_percentages = list()
+    negative_percentages = list()
+    for index, value in enumerate(positive_histogram[0] * np.diff(bins) * 100):
+        positive_percentages.append(["{:d}%-{:d}%".format(positive_histogram[1][index],
+                                    positive_histogram[1][index+1]),
+                                    '{:.2f}%'.format(value)])
+    for index, value in enumerate(negative_historgram[0] * np.diff(bins) * 100):
+        negative_percentages.append(["{:d}%-{:d}%".format(negative_historgram[1][index],
+                                    negative_historgram[1][index+1]),
+                                    '{:.2f}%'.format(value)])
+    positive_percentages.reverse()
+    negative_percentages.reverse()
+    return positive_percentages, negative_percentages
