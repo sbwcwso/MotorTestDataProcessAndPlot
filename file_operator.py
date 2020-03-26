@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Friday, 2020-03-13, 12:59:20 pm
+# Last Modified: Thursday, 2020-03-26, 11:17:33 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -104,7 +104,7 @@ class FileOperator():
         for erg_file in self.erg_files:
             if len(dfs) == 0:
                 # erg 文件采用的是此种编码
-                with open(erg_file, 'r', encoding="unicode_escape") as f:
+                with open(erg_file, 'r', encoding="ISO-8859-1") as f:
                     lines = f.readlines()
                     start_row = int(lines[0])
                     para_nums = int(lines[3])
@@ -124,6 +124,30 @@ class FileOperator():
         # ! windows 要保存为带 BOM 的 utf-8，不然摄氏度符号会乱码
         result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
 
+    
+    def convert_ergs(self):
+        """"转换 erg 文件至 csv"""
+        for erg_file in self.erg_files:
+            # erg 文件采用的是此种编码
+            with open(erg_file, 'r', encoding="ISO-8859-1") as f:
+                lines = f.readlines()
+                start_row = int(lines[0])
+                para_nums = int(lines[3])
+            paras = []
+            for line in lines[4:4+para_nums]:
+                if line.split(";")[1]:
+                    paras.append("{} [{}]".format(line.split(";")[0],
+                                                    line.split(";")[1]))
+                else:
+                    paras.append("{}".format(line.split(";")[0]))
+            result_data = pd.read_csv(erg_file, skiprows=start_row,
+                                   header=None, delimiter=";")
+            result_data.rename(columns=dict(zip(result_data.columns, paras)),
+                               inplace=True)
+            file_name = os.path.splitext(erg_file)[0] + ".csv"
+            result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
+
+
     def make_result_dir(self):
         """创建结果文件夹"""
         try:
@@ -131,7 +155,7 @@ class FileOperator():
         except FileExistsError:
             pass
 
-    def save_to_csv(self, csv_name, df):
+    def save_to_csv(self, csv_name, df,  index=0):
         """将指定的 dataframe 写入 result 文件夹下的 csv 文件中
 
         Args:
@@ -140,9 +164,9 @@ class FileOperator():
         """
         csv_name = '_'.join([self.operator_name, csv_name])
         try:
-            df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="utf-8-sig")
+            df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="utf-8-sig")
         except:
-            df.to_csv(os.path.join(self.result_dir, csv_name), index=0, encoding="gbk")
+            df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="gbk")
 
 
     def save_to_png(self, fig, name):
@@ -162,11 +186,32 @@ class FileOperator():
         self.make_result_dir()
 
 
-def merge_ergs(path):
+def handle_ergs(path, merge=False):
     """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
     file_operator = FileOperator(path)
     file_operator.get_ergs()
-    file_operator.splice_ergs()
+    if merge:
+        file_operator.splice_ergs()
+    else:
+        file_operator.convert_ergs()
+
+
+def get_average(path, flag='speed_step', head=True, line_count=200, handle_error_data=True):
+    file_operator = FileOperator(path)
+    file_operator.get_csvs()
+    file_operator.make_result_dir()
+    origin_data = file_operator.splice_csvs()
+    if head:
+        used_data = origin_data.groupby(flag).head(line_count)
+    else:
+        used_data = origin_data.grooupby(flag).tail(line_count)
+    if handle_error_data:   # 剔除掉功率分析仪的异常值
+        used_data = used_data[used_data['PA1_PM [W]'] < 1e10]
+    average_data = used_data.groupby(flag).mean()
+    file_operator.save_to_csv("used_data.csv", used_data)
+    file_operator.save_to_csv("average_data.csv", average_data, index=1)
+
+
 
 
 if __name__ == "__main__":
@@ -174,3 +219,4 @@ if __name__ == "__main__":
     # ! 测试合并 erg 文件的功能
     path = input("请输入文件路径:")
     merge_ergs(path)
+    get_average(path)
