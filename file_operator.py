@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2020-03-26, 11:17:33 am
+# Last Modified: Friday, 2020-03-27, 9:37:11 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -196,17 +196,20 @@ def handle_ergs(path, merge=False):
         file_operator.convert_ergs()
 
 
-def get_average(path, flag='speed_step', head=True, line_count=200, handle_error_data=True):
+def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', head=True, line_count=None):
     file_operator = FileOperator(path)
     file_operator.get_csvs()
     file_operator.make_result_dir()
     origin_data = file_operator.splice_csvs()
-    if head:
-        used_data = origin_data.groupby(flag).head(line_count)
+    if line_count is not None:
+        if head:
+            used_data = origin_data.groupby(flag).head(line_count)
+        else:
+            used_data = origin_data.grooupby(flag).tail(line_count)
     else:
-        used_data = origin_data.grooupby(flag).tail(line_count)
+        used_data = origin_data
     if handle_error_data:   # 剔除掉功率分析仪的异常值
-        used_data = used_data[used_data['PA1_PM [W]'] < 1e10]
+        used_data = used_data[used_data[PA_signal] < 1e10]
     average_data = used_data.groupby(flag).mean()
     file_operator.save_to_csv("used_data.csv", used_data)
     file_operator.save_to_csv("average_data.csv", average_data, index=1)
@@ -218,5 +221,5 @@ if __name__ == "__main__":
     # !测试多个 excel 文件转换为 csv 并判断是否带有单位的功能
     # ! 测试合并 erg 文件的功能
     path = input("请输入文件路径:")
-    merge_ergs(path)
+    handle_ergs(path)
     get_average(path)
