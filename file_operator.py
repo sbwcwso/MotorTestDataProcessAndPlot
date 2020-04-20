@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2020-04-16, 10:50:31 am
+# Last Modified: Monday, 2020-04-20, 4:05:53 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -20,15 +20,19 @@ import os
 from subprocess import call
 import pandas as pd
 import locale
+import glob
 from data_process import sort_by_time
 
 class FileOperator():
     """文件读写操作"""
     def __init__(self, path, result_dir = None):
-        self.path = path
+        if os.path.isdir(path):
+            self.path, self.file_name = path, None
+        elif os.path.isfile(path):
+            self.path, self.file_name  = os.path.split(path)[0], os.path.split(path)[1]
+        else:
+            raise FileNotFoundError("[Errno 2] No such file or directory")
         self.operator_name = path.split(os.path.sep)[-1]
-        self.excel_files = list()
-        self.csv_files = list()
         if result_dir is None:
             self.result_dir = self.path
         else:
@@ -48,11 +52,7 @@ class FileOperator():
 
     def _get_spcified_suffix(self, suffix):
         """获取指定后缀的文件名"""
-        res = list()
-        for item in os.listdir(self.path):
-            if os.path.splitext(item)[1] == suffix:
-                res.append(os.path.join(self.path, item))
-        return res
+        return glob.glob(os.path.join(self.path, "*{}".format(suffix)))
     
     def get_subfolder(self):
         """获取指定路径下的所有子文件夹"""
@@ -63,20 +63,50 @@ class FileOperator():
                 self.sub_folder.append(full_path)
         return self.sub_folder
 
-    def get_excels(self):
+    @property
+    def excel_files(self):
         """获取给定路径下所有后缀为 xlsx 的文件"""
-        self.excel_files = self._get_spcified_suffix('.xlsx')
+        suffix = ".xlsx"
+        if  not hasattr(self, '_excel_files'):
+            if self.file_name is None:
+                self._excel_files = self._get_spcified_suffix(suffix)
+            elif os.path.splitext(self.file_name)[-1] == suffix:
+                self._excel_files = [os.path.join(self.path, self.file_name)]
+            else:
+                self._excel_files = []
 
-    def get_ergs(self):
-        """获取指定路径下所有后缀为 erg 的文件"""
-        self.erg_files = self._get_spcified_suffix(".erg")
+        return self._excel_files
 
-    def get_csvs(self):
-        """获取当前路径下所有的 csv 文件"""
-        self.csv_files = self._get_spcified_suffix('.csv')
+
+    @property
+    def erg_files(self):
+        """获取给定路径下所有后缀为 xlsx 的文件"""
+        suffix = ".erg"
+        if  not hasattr(self, '_erg_files'):
+            if self.file_name is None:
+                self._erg_files = self._get_spcified_suffix(suffix)
+            elif os.path.splitext(self.file_name)[-1] == suffix:
+                self._erg_files = [os.path.join(self.path, self.file_name)]
+            else:
+                self._erg_files = []
+
+        return self._erg_files
+
+    @property
+    def csv_files(self):
+        """获取给定路径下所有后缀为 xlsx 的文件"""
+        suffix = ".csv"
+        if  not hasattr(self, '_csv_files'):
+            if self.file_name is None:
+                self._csv_files = self._get_spcified_suffix(suffix)
+            elif os.path.splitext(self.file_name)[-1] == suffix:
+                self._csv_files = [os.path.join(self.path, self.file_name)]
+            else:
+                self._csv_files = []
+        return self._csv_files
 
     def splice_csvs(self):
-        """合并读取文件夹中的 csv 文件，并判断变量中是否带有单位
+        """合并读取文件夹中的 csv 文件
 
         Returns:
             self.original_data: 合并后的 DataFrame数据
@@ -92,16 +122,12 @@ class FileOperator():
                                        low_memory=False))
         #* 假设表头完全相同，直接合并多个数据
         if len(dfs) > 1:
-            self.original_data = pd.concat(dfs)
+            self.original_data = pd.concat(dfs, sort=False)
         else:
             self.original_data = dfs[0]
         #* 假设表头含有单位，不再进行额外的判断
         return self.original_data
 
-    def erg2csv(self, get_average=False):
-        """将 erg 文件转换为 csv 文件"""
-        pass
-        
 
     def splice_ergs(self, file_name = None):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
@@ -186,6 +212,43 @@ class FileOperator():
         png_name = '_'.join([self.operator_name, name])
         fig.savefig(os.path.join(self.result_dir, png_name))
 
+
+    def handle_ergs(self, merge=False, file_name=None):
+        """合并指定路径下的 erg 文件，并将其转换为 csv 格式
+        merge = True: 合并文件。 file_name 为文件名
+        merge = False: 不合并文件， 文件名与 erg 文件相同
+        """
+        self.make_result_dir()
+        if self.erg_files:
+            if merge:
+                self.splice_ergs(file_name=file_name)
+            else:
+                self.convert_ergs()
+                
+    def get_average(self, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', 
+                    file_name=None, head=True, line_count=None):
+        """按工况点求取均值
+        handle_error_data 为 True, 则会按照 PA_signal 剔除偏大的值
+        head 为 True, 则只会取前 line_count 个数据
+        file_name 为结果的文件名
+        """
+        self.make_result_dir()
+        origin_data = self.splice_csvs()
+        if line_count is not None:
+            if head:
+                used_data = origin_data.groupby(flag).head(line_count)
+            else:
+                used_data = origin_data.groupby(flag).tail(line_count)
+        else:
+            used_data = origin_data
+        if handle_error_data:   # 剔除掉功率分析仪的异常值
+            used_data = used_data[used_data[PA_signal] < 1e10]
+        average_data = used_data.groupby(flag).mean()
+        # file_operator.save_to_csv("used_data.csv", used_data)
+        if file_name is None:
+            file_name = os.path.join(self.path, "average_data.csv")
+        self.save_to_csv( file_name, average_data, index=1)
+
     def run(self, convert_flag):
         """转换 excel 文件到 csv 并创建结果文件夹"""
         if convert_flag == 1:
@@ -196,36 +259,6 @@ class FileOperator():
             self.splice_ergs()
         self.get_csvs()
         self.make_result_dir()
-
-    def handle_ergs(self, merge=False, file_name=None):
-        """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
-        self.make_result_dir()
-        if self.erg_files:
-            if merge:
-                self.splice_ergs(file_name=file_name)
-            else:
-                self.convert_ergs()
-                
-    def get_average(self, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', 
-                    file_name=None, head=True, line_count=None):
-        self.get_csvs()
-        self.make_result_dir()
-        origin_data = self.splice_csvs()
-        if line_count is not None:
-            if head:
-                used_data = origin_data.groupby(flag).head(line_count)
-            else:
-                used_data = origin_data.grooupby(flag).tail(line_count)
-        else:
-            used_data = origin_data
-        if handle_error_data:   # 剔除掉功率分析仪的异常值
-            used_data = used_data[used_data[PA_signal] < 1e10]
-        average_data = used_data.groupby(flag).mean()
-        # file_operator.save_to_csv("used_data.csv", used_data)
-        if file_name is None:
-            file_name = "average_data.csv"
-        self.save_to_csv( file_name, average_data, index=1)
-
 
 
 
