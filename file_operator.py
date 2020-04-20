@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Friday, 2020-03-27, 9:37:11 am
+# Last Modified: Thursday, 2020-04-16, 10:50:31 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -24,12 +24,15 @@ from data_process import sort_by_time
 
 class FileOperator():
     """文件读写操作"""
-    def __init__(self, path):
+    def __init__(self, path, result_dir = None):
         self.path = path
         self.operator_name = path.split(os.path.sep)[-1]
         self.excel_files = list()
         self.csv_files = list()
-        self.result_dir = self.path + os.path.sep + 'result'
+        if result_dir is None:
+            self.result_dir = self.path
+        else:
+            self.result_dir = result_dir
         self.class_path = os.path.split(__file__)[0]
         self.vbs_path = os.path.join(self.class_path, "ExcelToCsv.vbs")
         self.sub_folder = None
@@ -88,15 +91,19 @@ class FileOperator():
                 dfs.append(pd.read_csv(csv_file, encoding='gbk',
                                        low_memory=False))
         #* 假设表头完全相同，直接合并多个数据
-        self.original_data = pd.concat(dfs)
+        if len(dfs) > 1:
+            self.original_data = pd.concat(dfs)
+        else:
+            self.original_data = dfs[0]
         #* 假设表头含有单位，不再进行额外的判断
         return self.original_data
 
     def erg2csv(self, get_average=False):
         """将 erg 文件转换为 csv 文件"""
+        pass
         
 
-    def splice_ergs(self):
+    def splice_ergs(self, file_name = None):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
         #为了方便 windows 系统打开， 将编码统一为 utf-8-sig
         dfs = list()
@@ -120,7 +127,8 @@ class FileOperator():
         result_data.rename(columns=dict(zip(result_data.columns, paras)),
                            inplace=True)
         sort_by_time(result_data)
-        file_name = os.path.join(self.path, "result.csv")
+        if file_name is None:
+            file_name = os.path.join(self.path, "result.csv")
         # ! windows 要保存为带 BOM 的 utf-8，不然摄氏度符号会乱码
         result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
 
@@ -151,7 +159,7 @@ class FileOperator():
     def make_result_dir(self):
         """创建结果文件夹"""
         try:
-            os.mkdir(self.result_dir)
+            os.makedirs(self.result_dir)
         except FileExistsError:
             pass
 
@@ -162,11 +170,15 @@ class FileOperator():
             csv_name (str): csv 文件的名字
             df (DataFrame): 要写入的 DataFrame
         """
-        csv_name = '_'.join([self.operator_name, csv_name])
+        # csv_name = '_'.join([self.operator_name, csv_name])
+        # try:
+        #     df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="utf-8-sig")
+        # except:
+        #     df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="gbk")
         try:
-            df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="utf-8-sig")
+            df.to_csv(csv_name, index=index, encoding="utf-8-sig")
         except:
-            df.to_csv(os.path.join(self.result_dir, csv_name), index=index, encoding="gbk")
+            df.to_csv(csv_name, index=index, encoding="gbk")
 
 
     def save_to_png(self, fig, name):
@@ -185,18 +197,61 @@ class FileOperator():
         self.get_csvs()
         self.make_result_dir()
 
+    def handle_ergs(self, merge=False, file_name=None):
+        """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
+        self.make_result_dir()
+        if self.erg_files:
+            if merge:
+                self.splice_ergs(file_name=file_name)
+            else:
+                self.convert_ergs()
+                
+    def get_average(self, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', 
+                    file_name=None, head=True, line_count=None):
+        self.get_csvs()
+        self.make_result_dir()
+        origin_data = self.splice_csvs()
+        if line_count is not None:
+            if head:
+                used_data = origin_data.groupby(flag).head(line_count)
+            else:
+                used_data = origin_data.grooupby(flag).tail(line_count)
+        else:
+            used_data = origin_data
+        if handle_error_data:   # 剔除掉功率分析仪的异常值
+            used_data = used_data[used_data[PA_signal] < 1e10]
+        average_data = used_data.groupby(flag).mean()
+        # file_operator.save_to_csv("used_data.csv", used_data)
+        if file_name is None:
+            file_name = "average_data.csv"
+        self.save_to_csv( file_name, average_data, index=1)
 
-def handle_ergs(path, merge=False):
+
+
+
+if __name__ == "__main__":
+    # !测试多个 excel 文件转换为 csv 并判断是否带有单位的功能
+    # ! 测试合并 erg 文件的功能
+    path = input("请输入文件路径:")
+    handle_ergs(path)
+    get_average(path)
+
+
+
+def handle_ergs(path, merge=False, file_name=None, result_dir=None):
     """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
-    file_operator = FileOperator(path)
+    file_operator = FileOperator(path, result_dir=result_dir)
     file_operator.get_ergs()
-    if merge:
-        file_operator.splice_ergs()
-    else:
-        file_operator.convert_ergs()
+    file_operator.make_result_dir()
+    if file_operator.erg_files:
+        if merge:
+            file_operator.splice_ergs(file_name=file_name)
+        else:
+            file_operator.convert_ergs()
 
 
-def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', head=True, line_count=None):
+def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', 
+                file_name=None, head=True, line_count=None):
     file_operator = FileOperator(path)
     file_operator.get_csvs()
     file_operator.make_result_dir()
@@ -211,8 +266,10 @@ def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_
     if handle_error_data:   # 剔除掉功率分析仪的异常值
         used_data = used_data[used_data[PA_signal] < 1e10]
     average_data = used_data.groupby(flag).mean()
-    file_operator.save_to_csv("used_data.csv", used_data)
-    file_operator.save_to_csv("average_data.csv", average_data, index=1)
+    # file_operator.save_to_csv("used_data.csv", used_data)
+    if file_name is None:
+        file_name = "average_data.csv"
+    file_operator.save_to_csv(file_operator, average_data, index=1)
 
 
 
