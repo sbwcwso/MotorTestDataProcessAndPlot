@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Monday, 2020-04-20, 4:05:53 pm
+# Last Modified: Sunday, 2020-04-26, 2:44:37 pm
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -210,8 +210,15 @@ class FileOperator():
     def save_to_png(self, fig, name):
         """保存图片到 result 文件夹下"""
         png_name = '_'.join([self.operator_name, name])
-        fig.savefig(os.path.join(self.result_dir, png_name))
+        png_name = os.path.join(self.result_dir, png_name)
+        fig.savefig(png_name)
+        return png_name
 
+    def save_to_md(self, text, name):
+        md_name = '_'.join([self.operator_name, name])
+        md_name = os.path.join(self.result_dir, md_name)
+        with open(md_name, 'w') as f:
+            f.write(text)
 
     def handle_ergs(self, merge=False, file_name=None):
         """合并指定路径下的 erg 文件，并将其转换为 csv 格式
@@ -252,12 +259,9 @@ class FileOperator():
     def run(self, convert_flag):
         """转换 excel 文件到 csv 并创建结果文件夹"""
         if convert_flag == 1:
-            self.get_excels()
             self.excel2csv()
         elif convert_flag == 2:
-            self.get_ergs()
             self.splice_ergs()
-        self.get_csvs()
         self.make_result_dir()
 
 
