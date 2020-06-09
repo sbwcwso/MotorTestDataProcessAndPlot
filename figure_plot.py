@@ -5,7 +5,7 @@
 # Author: Li junjie
 # Email: lijunjie199502@gmail.com
 # -----
-# Last Modified: Thursday, 2019-09-26, 9:58:02 am
+# Last Modified: Tuesday, 2020-03-10, 9:30:55 am
 # Modified By: Li junjie
 # -----
 # Copyright (c) 2019 SVW
@@ -72,7 +72,8 @@ def plot_eff_map(x, y, z, paras):
     plt.title(paras['title'], fontsize=12)
     plt.xlabel('Speed [rpm]', fontsize=12)
     plt.ylabel('Torque [Nm]', fontsize=12)
-    legend_point = np.hstack([np.nanmin(z), np.arange(70, 90, 5),
+    legend_point_min = np.nanmin(z) if np.nanmin(z) < 70 else 60
+    legend_point = np.hstack([legend_point_min, np.arange(70, 90, 5),
                               np.arange(90, math.ceil(np.nanmax(z)) + 1, 1)])
     colors = ['#0000FF', '#3333CC', '#666699', '#999965', '#CCCC33', '#FFFF00',
               '#FFE200', '#FFC600', '#FFAA00', '#FF8D00', '#FF7100', '#FF5400',
@@ -84,7 +85,8 @@ def plot_eff_map(x, y, z, paras):
     plt.contourf(x, y, z, legend_point, colors=colors)  # 绘制填充色
     plt.colorbar()
     # ** 在图形上加入效率区间表格
-    positive_percentages, negative_percentages = _get_eff_table_data(x, y, z)
+    positive_percentages = paras['positive_percentages']
+    negative_percentages = paras['negative_percentages']
     col_labels = ['效率区间', '占比']
     plt.table(cellText=positive_percentages,
               colWidths=[0.1]*3, colLabels=col_labels, loc='upper right')
@@ -114,6 +116,8 @@ def _get_eff_table_data(x, y, z):
     # * 统计各个效率点所占的百分比
     positive_histogram = np.histogram(positive, bins=bins, density=True)
     negative_historgram = np.histogram(negative, bins=bins, density=True)
+    print(positive_histogram)
+    print(negative_historgram)
     # * 生成 matplotlib 能够实别的数据格式
     positive_percentages = list()
     negative_percentages = list()
