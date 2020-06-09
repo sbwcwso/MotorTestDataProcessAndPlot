@@ -241,11 +241,7 @@ class EffProcess(DataProcess):
         """对绘图点进行处理， 并调用绘图函数"""
         grid_x, grid_y = np.mgrid[x.min(): x.max():1, y.min(): y.max():1]
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
-        # * 正负效率分别按照实验的最大功率点进行截取
-        # TODO 后续可按照外特性曲线进行截取
-        # power = grid_x * grid_y
-        # grid_z[power > (x * y).max()] = np.nan
-        # grid_z[power < (x * y).min()] = np.nan
+        # 按照边界点进行截取
         bbpath = get_boundary_path(x, y)
         origin_shape = grid_x.shape
         grid_x.shape = 1, -1
@@ -259,10 +255,6 @@ class EffProcess(DataProcess):
         grid_x.shape = origin_shape
         grid_y.shape = origin_shape
         grid_z.shape = origin_shape 
-        # for i, item in enumerate(grid_x):
-        #     for j, _ in enumerate(item):
-        #         if not bbpath.contains_point([grid_x[i][j], grid_y[i][j]]):
-        #              grid_z[i][j] = np.nan 
         
         # * 调用 map 图画图程序
         self._get_eff_table_data(grid_x, grid_y, grid_z, paras)
@@ -410,6 +402,7 @@ class EffProcess(DataProcess):
         """)
         markdown_text = markdown_text.format(**self.figs, **self.pivots)
         self.file_operator.save_to_md(markdown_text, name='效率测试.md')
+
 
 def sort_by_time(data):
     """ 根据实验数据的记录日期对记录数据进行排序

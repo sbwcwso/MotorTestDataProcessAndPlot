@@ -12,6 +12,7 @@ from scipy.spatial import Delaunay
 import numpy as np
 import matplotlib.path as mplPath
 
+
 def alpha_shape(points, alpha, only_outer=True):
     """
     Compute the alpha shape (concave hull) of a set of points.
@@ -106,4 +107,3 @@ def get_boundary_path(x, y):
       real_edges.append(points[item[0],:])
     bbPath = mplPath.Path(real_edges)
     return bbPath
-    

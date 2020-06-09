@@ -6,24 +6,7 @@
 # LastEditTime: 2020-05-07 13:40:33
 # FilePath: \DataProcess_FigurePlot\handle_single_working.py
 ###
-# -*- coding:utf-8 -*-
-###
-# File: handle_single_working.py
-# Created Date: Wednesday, 2019-09-18, 10:36:22 am
-# Author: Li junjie
-# Email: lijunjie199502@gmail.com
-# -----
-# Last Modified: Sunday, 2020-04-26, 4:02:08 pm
-# Modified By: Li junjie
-# -----
-# Copyright (c) 2019 SVW
-# ---
-# Feel free to use and modify!
-# -----
-# HISTORY:
-# Date      	By	Comments
-# ----------	---	----------------------------------------------------------
-###
+
 from file_operator import FileOperator
 from data_process import OCProcess, ASCProcess, EffProcess
 import os

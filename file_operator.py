@@ -16,12 +16,14 @@
 # Date      	By	Comments
 # ----------	---	----------------------------------------------------------
 ###
+
 import os
 from subprocess import call
 import pandas as pd
 import locale
 import glob
 from data_process import sort_by_time
+
 
 class FileOperator():
     """文件读写操作"""
@@ -77,7 +79,6 @@ class FileOperator():
 
         return self._excel_files
 
-
     @property
     def erg_files(self):
         """获取给定路径下所有后缀为 xlsx 的文件"""
@@ -128,7 +129,6 @@ class FileOperator():
         #* 假设表头含有单位，不再进行额外的判断
         return self.original_data
 
-
     def splice_ergs(self, file_name = None):
         """合并当前文件夹下的所有 erg 文件，保存为 csv 文件"""
         #为了方便 windows 系统打开， 将编码统一为 utf-8-sig
@@ -157,7 +157,6 @@ class FileOperator():
             file_name = os.path.join(self.path, "result.csv")
         # ! windows 要保存为带 BOM 的 utf-8，不然摄氏度符号会乱码
         result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
-
     
     def convert_ergs(self):
         """"转换 erg 文件至 csv"""
@@ -180,7 +179,6 @@ class FileOperator():
                                inplace=True)
             file_name = os.path.splitext(erg_file)[0] + ".csv"
             result_data.to_csv(file_name, index=0, encoding="utf-8-sig")
-
 
     def make_result_dir(self):
         """创建结果文件夹"""
@@ -205,7 +203,6 @@ class FileOperator():
             df.to_csv(csv_name, index=index, encoding="utf-8-sig")
         except:
             df.to_csv(csv_name, index=index, encoding="gbk")
-
 
     def save_to_png(self, fig, name):
         """保存图片到 result 文件夹下"""
@@ -264,17 +261,6 @@ class FileOperator():
             self.splice_ergs()
         self.make_result_dir()
 
-
-
-if __name__ == "__main__":
-    # !测试多个 excel 文件转换为 csv 并判断是否带有单位的功能
-    # ! 测试合并 erg 文件的功能
-    path = input("请输入文件路径:")
-    handle_ergs(path)
-    get_average(path)
-
-
-
 def handle_ergs(path, merge=False, file_name=None, result_dir=None):
     """合并指定路径下的 erg 文件，并将其转换为 csv 格式"""
     file_operator = FileOperator(path, result_dir=result_dir)
@@ -286,11 +272,9 @@ def handle_ergs(path, merge=False, file_name=None, result_dir=None):
         else:
             file_operator.convert_ergs()
 
-
-def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_PM [W]', 
+def get_average(path, flag='speed_step', handle_error_data=True, PA_signals=None, 
                 file_name=None, head=True, line_count=None):
     file_operator = FileOperator(path)
-    file_operator.get_csvs()
     file_operator.make_result_dir()
     origin_data = file_operator.splice_csvs()
     if line_count is not None:
@@ -301,14 +285,14 @@ def get_average(path, flag='speed_step', handle_error_data=True, PA_signal='PA1_
     else:
         used_data = origin_data
     if handle_error_data:   # 剔除掉功率分析仪的异常值
-        used_data = used_data[used_data[PA_signal] < 1e10]
+        if PA_signals is not None:
+            for PA_signal in PA_signals:
+                used_data = used_data[used_data[PA_signal] < 1e10]
     average_data = used_data.groupby(flag).mean()
     # file_operator.save_to_csv("used_data.csv", used_data)
     if file_name is None:
         file_name = "average_data.csv"
     file_operator.save_to_csv(file_operator, average_data, index=1)
-
-
 
 
 if __name__ == "__main__":
