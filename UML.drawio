@@ -1,0 +1,46 @@
+<mxfile host="" modified="2020-06-11T08:33:47.266Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.45.1 Chrome/78.0.3904.130 Electron/7.2.4 Safari/537.36" etag="9kwEPRmCt_jMkWewBmTR" version="13.1.3">
+    <diagram id="6hGFLwfOUW9BJ-s0fimq" name="Page-1">
+        <mxGraphModel dx="606" dy="340" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="10" value="file_operator" style="html=1;dropTarget=0;" vertex="1" parent="1">
+                    <mxGeometry x="90" y="310" width="180" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="" style="shape=component;jettyWidth=8;jettyHeight=4;" vertex="1" parent="10">
+                    <mxGeometry x="1" width="20" height="20" relative="1" as="geometry">
+                        <mxPoint x="-27" y="7" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="12" value="data_process" style="html=1;dropTarget=0;" vertex="1" parent="1">
+                    <mxGeometry x="350" y="310" width="180" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="" style="shape=component;jettyWidth=8;jettyHeight=4;" vertex="1" parent="12">
+                    <mxGeometry x="1" width="20" height="20" relative="1" as="geometry">
+                        <mxPoint x="-27" y="7" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="14" value="figure_plot" style="html=1;dropTarget=0;" vertex="1" parent="1">
+                    <mxGeometry x="640" y="310" width="180" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="" style="shape=component;jettyWidth=8;jettyHeight=4;" vertex="1" parent="14">
+                    <mxGeometry x="1" width="20" height="20" relative="1" as="geometry">
+                        <mxPoint x="-27" y="7" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="16" value="提供数据" style="shape=singleArrow;direction=east;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="270" y="300" width="80" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="写入文件" style="shape=singleArrow;direction=west;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="270" y="360" width="80" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="提供画图数据" style="shape=singleArrow;direction=east;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="530" y="300" width="110" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="返回图形对象" style="shape=singleArrow;direction=west;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="530" y="350" width="110" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

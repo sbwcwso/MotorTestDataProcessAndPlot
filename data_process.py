@@ -1,37 +1,26 @@
-# -*- coding:utf-8 -*-
-###
-# File: data_process.py
-# Created Date: Tuesday, 2019-09-24, 3:40:55 pm
-# Author: Li junjie
-# Email: lijunjie199502@gmail.com
-# -----
-# Last Modified: Tuesday, 2020-04-28, 1:07:42 pm
-# Modified By: Li junjie
-# -----
-# Copyright (c) 2019 SVW
-#
-# Feel free to use and modify!
-# -----
-# HISTORY:
-# Date      	By	Comments
-# ----------	---	----------------------------------------------------------
-###
+"""
+实现文件读写功能
+"""
 
-from get_boundary import get_boundary_path
-
-import pandas as pd
-import numpy as np
-from scipy.interpolate import griddata
-import matplotlib.pyplot as plt
-from figure_plot import plot_double_y, plot_eff_map
 import math
 import os
 import textwrap
 
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.interpolate import griddata
+import pandas as pd
 
-class DataProcess():
-    """主数据处理类"""
-    def __init__(self, file_operator):
+from figure_plot import plot_double_y, plot_eff_map
+from get_boundary import get_boundary_path
+
+
+class DataProcessMixin():
+    """
+    数据处理类混入类
+    """
+    def __init__(self, file_operator, file_type):
+        self.file_type = file_type
         self.file_operator = file_operator
         self.original_data = None
         self.used_data = None
@@ -39,17 +28,28 @@ class DataProcess():
         self.mat_data = dict()
 
     def get_original_data(self):
-        """获取原始数据"""
-        self.original_data = self.file_operator.splice_csvs()
+        """
+        获取原始数据
+        """
+        if self.file_type == 0:
+            self.original_data = self.file_operator.splice_csvs()
+        elif self.file_type == 1:
+            self.original_data = self.file_operator.splice_excels()
+        elif self.file_type == 2:
+            self.original_data = self.file_operator.handle_ergs(merge=True)
 
     def get_used_data(self):
-        """根据 self.vars 中的值来获取需要的变量"""
+        """
+        根据 self.vars 中的值来获取需要的变量
+        """
         self.used_data = self.original_data.\
             reindex(columns=list(self.vars.values())).astype('float64')
 
     def get_plot_data(self):
-        """主要对相关变量按照 counter 求取均值"""
-        #TODO 取最后十个点再求取平均值
+        """
+        主要对相关变量按照 counter 求取均值
+        """
+        # 默认取前 200 个点
         self.plot_data = self.used_data.groupby([self.vars['speed'], self.vars['torque_set']]).head(200)
         self.plot_data = self.plot_data.groupby([self.vars['speed'], self.vars['torque_set']]).mean()
         self.plot_data.reset_index(level=[self.vars['speed'], self.vars['torque_set']], inplace=True)
@@ -57,18 +57,16 @@ class DataProcess():
         self.plot_data.sort_values(self.vars['speed'], inplace=True)
 
     def save_data(self):
-        """保存数据处理结果至 /result 中"""
+        """
+        保存数据处理结果至 /result 中
+        """
         self.file_operator.save_to_csv(os.path.join(self.file_operator.result_dir, 
-                                                    'original_data.csv'), self.original_data)
-        self.file_operator.save_to_csv(os.path.join(self.file_operator.result_dir, 
-                                       'used_data.csv'), self.used_data)
-        self.file_operator.save_to_csv(os.path.join(self.file_operator.result_dir, 
-                                                    'plot_data.csv'), self.plot_data)
+                                                    'result.csv'), self.plot_data)
 
 
-class OCProcess(DataProcess):
+class OCProcess(DataProcessMixin):
     """open circuit 数据处理与画图"""
-    def __init__(self, file_operator):
+    def __init__(self, file_operator, file_type):
         self.vars = {'counter': 'speed_step',
                      'speed': 'SO_N_HM [1/min]',
                      'torque_real': 'M_HMmess [Nm]',
@@ -80,7 +78,7 @@ class OCProcess(DataProcess):
                      'lew_motor_flow': 'LEW_SO_Q_P1 [l/min]',
                      'stator_temperatrue': 'T_MOTOR [°C]',
                      'rotor_temperature': 'T_Rotor [°C]'}
-        super().__init__(file_operator)
+        super().__init__(file_operator, file_type)
 
     def data_process(self):
         """进行数据处理"""
@@ -94,7 +92,9 @@ class OCProcess(DataProcess):
              self.vars['voltage_UV']]].mean(axis=1)
 
     def plot(self):
-        """ASC 工况绘图"""
+        """
+        ASC 工况绘图
+        """
         x = self.plot_data[self.vars['speed']]
         y1 = [{'data': [x, self.plot_data[self.vars['voltage_UW']]],
                'style': {'linestyle': '-', 'marker': 'v', 'label': '$U_{UW}$'}},
@@ -113,20 +113,39 @@ class OCProcess(DataProcess):
                  '\nGlycol : {:.1f}°C , {:.1f}L/min'
                  .format(lew_tem, lew_flow)}
         fig = plot_double_y(y1, y2, paras)
-        self.file_operator.save_to_png(fig, 'OC.png')
+        self.png_name = self.file_operator.save_to_png(fig, 'OC.png')
         plt.close(fig)
-        
+
     def handle_used_data(self):
-        """对 used_data 进行处理"""
+        """
+        对 used_data 进行处理， 筛选掉功率分析仪中的异常点
+        """
         voltage_names = ['voltage_UW', 'voltage_VW', 'voltage_UV']
         for voltage_name in voltage_names:
             self.used_data = self.used_data[
                 self.used_data[self.vars[voltage_name]] < 1e30]
 
+    def generator_markdown(self):
+        """
+        生成markdown 文本
+        """
+        markdown_text =  textwrap.dedent("""
+        # 1. 试验项目
+        - 电机开路
+        # 2. 试验结果
+        - [相关试验数据](result.csv)
+        - 试验结果图
+        ![试验结果图]({})
+        """)
+        markdown_text = markdown_text.format(os.path.split(self.png_name)[-1].replace(' ', '%20'))
+        self.file_operator.save_to_md(markdown_text, name='开路测试.md')
 
-class ASCProcess(DataProcess):
-    """ASC 数据处理与画图"""
-    def __init__(self, file_operator):
+
+class ASCProcess(DataProcessMixin):
+    """
+    ASC 数据处理与画图， 及试验简报的生成
+    """
+    def __init__(self, file_operator, file_type):
         self.vars = {'counter': 'speed_step',
                      'speed': 'SO_N_HM [1/min]',
                      'torque_real': 'M_HMmess [Nm]',
@@ -139,10 +158,12 @@ class ASCProcess(DataProcess):
                      'lew_motor_flow': 'LEW_SO_Q_P1 [l/min]',
                      'stator_temperatrue': 'T_MOTOR [°C]',
                      'rotor_temperature': 'T_Rotor [°C]'}
-        super().__init__(file_operator)
+        super().__init__(file_operator, file_type)
 
     def data_process(self):
-        """进行数据处理"""
+        """
+        进行数据处理
+        """
         self.get_original_data()
         self.get_used_data()
         self.handle_used_data()
@@ -153,7 +174,9 @@ class ASCProcess(DataProcess):
              self.vars['current_w']]].mean(axis=1)
 
     def plot(self):
-        """ASC 工况绘图"""
+        """
+        ASC 工况绘图
+        """
         x = self.plot_data[self.vars['speed']]
         y1 = [{'data': [x, self.plot_data[self.vars['current_u']]],
                'style': {'linestyle': '-', 'marker': 'v', 'label': '$I_U$'}},
@@ -172,11 +195,13 @@ class ASCProcess(DataProcess):
                  '\nGlycol : {:.1f}°C , {:.1f}L/min'
                  .format(lew_tem, lew_flow)}
         fig = plot_double_y(y1, y2, paras)
-        self.file_operator.save_to_png(fig, 'ASC.png')
+        self.png_name = self.file_operator.save_to_png(fig, 'ASC.png')
         plt.close(fig)
 
     def handle_used_data(self):
-        """对 used_data 进行处理"""
+        """
+        对 used_data 进行处理
+        """
         current_names = ['current_u', 'current_v', 'current_w']
         for current_name in current_names:
             self.used_data = self.used_data[
@@ -186,10 +211,27 @@ class ASCProcess(DataProcess):
             if foo.sum() != 0:
                 self.used_data[self.vars[current_name]] /= 1e3
 
+    def generator_markdown(self):
+        """
+        生成markdown 文本
+        """
+        markdown_text =  textwrap.dedent("""
+        # 1. 试验项目
+        - 电机短路
+        # 2. 试验结果
+        - [相关试验数据](result.csv)
+        - 试验结果图
+        ![试验结果图]({})
+        """)
+        markdown_text = markdown_text.format(os.path.split(self.png_name)[-1].replace(' ', '%20'))
+        self.file_operator.save_to_md(markdown_text, name='短路测试.md')
 
-class EffProcess(DataProcess):
-    """效率数据处理与画图"""
-    def __init__(self, file_operator):
+
+class EffProcess(DataProcessMixin):
+    """
+    效率数据处理与画图
+    """
+    def __init__(self, file_operator, file_type):
         self.vars = {'counter': 'speed_step',
                      'speed': 'SO_N_HM [1/min]',
                      'speed_real': 'N_HM [1/min]',
@@ -206,13 +248,15 @@ class EffProcess(DataProcess):
                      'stator_temperature': 'T_MOTOR [°C]',
                      'rotor_temperature': 'T_Rotor [°C]'
         }
-        super().__init__(file_operator)
+        super().__init__(file_operator, file_type)
         self.figs = {}
         self.pivots = {}
         self.paras_dict = {}  # 最后写入 csv 中的相关参数列表
 
     def data_process(self):
-        """进行数据处理"""
+        """
+        进行数据处理
+        """
         self.get_original_data()
         self.get_used_data()
         self.handle_used_data()
@@ -220,7 +264,9 @@ class EffProcess(DataProcess):
         self.get_pivoted_data()
 
     def plot(self):
-        """绘制 motor, peu, sys 效率 map 图"""
+        """
+        绘制 motor, peu, sys 效率 map 图
+        """
         x = self.plot_data[self.vars['speed']].values
         y = self.plot_data[self.vars['torque_real']].values
         for eff in ['motor_eff', 'peu_eff', 'sys_eff']:
@@ -234,12 +280,13 @@ class EffProcess(DataProcess):
             fig = self._plot(x, y, z, paras)
             self.figs[eff] = self.file_operator.save_to_png(fig, self.file_operator
                                            .operator_name + eff + '.png')
-            self.figs[eff] = os.path.split(self.figs[eff])[-1]
+            self.figs[eff] = os.path.split(self.figs[eff])[-1].replace(' ', '%20')
     
-
     def _plot(self, x, y, z, paras):
-        """对绘图点进行处理， 并调用绘图函数"""
-        grid_x, grid_y = np.mgrid[x.min(): x.max():1, y.min(): y.max():1]
+        """
+        对绘图点进行处理， 并调用绘图函数
+        """
+        grid_x, grid_y = np.mgrid[x.min(): x.max():50, y.min(): y.max():1]
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
         # 按照边界点进行截取
         bbpath = get_boundary_path(x, y)
@@ -265,12 +312,12 @@ class EffProcess(DataProcess):
             pivoted = self.plot_data.pivot(self.vars['torque_set'], self.vars['speed'], self.vars[eff])
             name = eff + "_pivot.csv"
             pivoted.to_csv(os.path.join(self.file_operator.result_dir, name))
-            self.pivots[eff + "_pivot"] = name
-
-
+            self.pivots[eff + "_pivot"] = name.replace(' ', '%20')
     
     def _get_eff_table_data(self, x, y, z, paras):
-        """效率区间数据的提取"""
+        """
+        效率区间数据的提取
+        """
         # * 筛选出正负效率点
         positive = z[y > 0]
         positive = positive[~np.isnan(positive)]  # 去除 nan 点
@@ -322,11 +369,12 @@ class EffProcess(DataProcess):
         self.paras_dict[paras['name'] + "_generator_eff_interval"] = generator_interval
         self.paras_dict[paras['name'] + "_generator_eff_interval_value"] = generator_interval_value
 
-
     def handle_used_data(self):
-        """对 used_data 进行处理"""
+        """
+        对 used_data 进行处理
+        """
         self.used_data = self.used_data[self.used_data[self.vars['power_M']] < 1e10]
-        # * 根据相关的值计算效率
+        # # * 根据相关的值计算效率
         self.used_data[self.vars['power_M']] = 1 / 9.55 * self.used_data[self.vars['speed_real']] * self.used_data[self.vars['torque_real']]
         sign = (self.used_data[self.vars['torque_set']] > 0) * 2 - 1
         self.used_data[self.vars['motor_eff']] = ( self.used_data[self.vars['power_M']]  / ( self.used_data[self.vars['power_AC1']] + self.used_data[self.vars['power_AC2']]) ) ** sign * 100
@@ -338,19 +386,24 @@ class EffProcess(DataProcess):
                 self.used_data[self.vars[eff]] > 100) ] = 0
     
     def save_data(self):
-        """保存相关数据，用于绘图"""
+        """
+        保存相关数据，用于绘图
+        """
         #* 求出损耗
         self.plot_data['motor_loss [kW]'] = ( self.plot_data[self.vars['power_AC1']] +\
             self.plot_data[self.vars['power_AC2']] - self.plot_data[self.vars['power_M']]) / 1000
-        super().save_data()
         # * 分别提取出发电和驱动状态下的数据
         motor_eff = self.plot_data[self.plot_data[self.vars['torque_set']] > 0]
         generator_eff = self.plot_data[self.plot_data[self.vars['torque_set']] < 0]
         self.paras_dict['motor_motor_eff [%]'] = motor_eff[self.vars['motor_eff']].array
+        self.paras_dict['peu_motor_eff [%]'] = motor_eff[self.vars['peu_eff']].array
+        self.paras_dict['sys_motor_eff [%]'] = motor_eff[self.vars['sys_eff']].array
         self.paras_dict['motor_motor_speed [rpm]'] = motor_eff[self.vars['speed']].array
         self.paras_dict['motor_motor_torque [Nm]'] = motor_eff[self.vars['torque_real']].array
         self.paras_dict['motor_motor_loss [kW]'] = motor_eff['motor_loss [kW]'].array
         self.paras_dict['motor_generator_eff [%]'] = generator_eff[self.vars['motor_eff']].array
+        self.paras_dict['peu_generator_eff [%]'] = generator_eff[self.vars['peu_eff']].array
+        self.paras_dict['sys_generator_eff [%]'] = generator_eff[self.vars['sys_eff']].array
         self.paras_dict['motor_generator_speed [rpm]'] = generator_eff[self.vars['speed']].array
         self.paras_dict['motor_generator_torque [Nm]'] = generator_eff[self.vars['torque_real']].array
         self.paras_dict['motor_generator_loss [kW]'] = generator_eff['motor_loss [kW]'].array
@@ -381,7 +434,9 @@ class EffProcess(DataProcess):
                                                 'result.csv'), res)
         
     def generator_markdown(self):
-        """生成markdown 文本"""
+        """
+        生成markdown 文本
+        """
         
         markdown_text =  textwrap.dedent("""
         # 1. 试验项目
@@ -405,7 +460,8 @@ class EffProcess(DataProcess):
 
 
 def sort_by_time(data):
-    """ 根据实验数据的记录日期对记录数据进行排序
+    """ 
+    根据实验数据的记录日期对记录数据进行排序
 
     Args:
         data[DataFrame]: 待排序的 DataFrame
@@ -419,3 +475,51 @@ def sort_by_time(data):
     data.sort_values('PST_UH_Tag [Unit_Day]', inplace=True, kind='mergesort')  # day
     data.sort_values('PST_UH_Monat [Unit_Mon]', inplace=True, kind='mergesort')  # month
     data.sort_values('PST_UH_Jahr [Unit_Yea]', inplace=True, kind='mergesort')  # year
+
+
+def get_average(file_operator, flags=None, file_type='csv', save_to_file = True, file_name=None, head=True, line_count=None,  
+                filter_flag=False, PA_signals=None):
+    """
+    针对一个文件夹的所有文件或者某个特定的文件，按工况点求取平均值
+
+    Arguments:
+        :param file_operator[FileOperator]: FileOperator 对象
+        :param flags[list]: 工况点的标识信号，如 [speed, toruqe]
+        :param save_to_file[bool]: 为 True 则将结果写入文件， 为 False 则不写入文件
+        :param file_type[str]: 要处理的文件类型, 'csv' 表示 csv 文件 '.erg' 表示 .erg 文件
+        :param file_name[str]: 结果文件的文件名
+        :param head[bool], line_count[int]: 
+            如果 line_count 为 None， 不进行任何操作,
+            如果 line_count 不为 None,
+                如果 head 为 True，则取头 line_count 个点, 
+                如果 head 为 False, 则取尾 line_count 个点,
+        :param filter_flag[list]: True 表示过滤异常数据，False 表示不过滤异常数据
+        :param PA_signals[list]: filter_flag 为 True 时，则按照此列表中的数据过滤相关信号值，要求信号的绝对值小于 1e10
+
+        :return average_data[DataFrame]: 求完平均值后的结果
+    """
+    if flags is None:
+        flags = ['speed_step']
+    file_operator.make_result_dir()
+    if file_type == 'csv':
+        origin_data = file_operator.splice_csvs()
+    elif file_type == 'erg':
+        origin_data = file_operator.handle_ergs(merge=True)
+    if line_count is not None:
+        if head:
+            used_data = origin_data.groupby(flags).head(line_count)
+        else:
+            used_data = origin_data.grooupby(flags).tail(line_count)
+    else:
+        used_data = origin_data
+    if filter_flag:   # 剔除掉功率分析仪的异常值
+        if PA_signals is not None:
+            for PA_signal in PA_signals:
+                used_data = used_data[abs(used_data[PA_signal]) < 1e10]
+    average_data = used_data.groupby(flags).mean()
+    if save_to_file:
+        if file_name is None:
+            file_name = os.path.join(file_operator.path,
+                                     os.path.split(file_operator.path)[-1] +  "_average_data.csv") 
+        file_operator.save_to_csv(file_name, average_data, index=1)
+    return average_data

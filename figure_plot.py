@@ -1,28 +1,17 @@
-# -*- coding:utf-8 -*-
-###
-# File: figure_plot.py
-# Created Date: Tuesday, 2019-09-17, 6:44:35 pm
-# Author: Li junjie
-# Email: lijunjie199502@gmail.com
-# -----
-# Last Modified: Tuesday, 2020-03-10, 9:30:55 am
-# Modified By: Li junjie
-# -----
-# Copyright (c) 2019 SVW
-# --
-# Feel free to use and modify!
-# -----
-# HISTORY:
-# Date      	By	Comments
-# ----------	---	----------------------------------------------------------
-###
+"""
+实现图形绘制功能
+"""
+
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
-import math
 
 
 def base_plot(y, paras):
-    """基础的 x, y 坐标轴绘图"""
+    """
+    基础的 x, y 坐标轴绘图
+    """
     fig = plt.figure(figsize=(8, 6), dpi=300)
     lns = list()
 
@@ -40,7 +29,9 @@ def base_plot(y, paras):
 
 
 def plot_double_y(y1, y2, paras):
-    """绘制双 y 坐标轴"""
+    """
+    绘制双 y 坐标轴
+    """
     fig = plt.figure(figsize=(8, 6), dpi=300)
     lns = list()
 
@@ -58,12 +49,14 @@ def plot_double_y(y1, y2, paras):
 
     # 合并图例
     labs = [l.get_label() for l in lns]
-    plt.legend(lns, labs, loc=0)
+    plt.legend(lns, labs, loc='center right')
     return fig
 
 
 def plot_eff_map(x, y, z, paras):
-    """绘制效率图"""
+    """
+    绘制效率图
+    """
     fig = plt.figure(facecolor='lightgray', figsize=(8, 8), dpi=300)
 
     plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
@@ -97,7 +90,9 @@ def plot_eff_map(x, y, z, paras):
 
 
 def _get_eff_table_data(x, y, z):
-    """效率区间表格数据提取"""
+    """
+    效率区间表格数据提取
+    """
     # * 筛选出正负效率点
     positive = z[y > 0]
     positive = positive[~np.isnan(positive)]  # 去除 nan 点

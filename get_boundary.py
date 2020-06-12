@@ -1,12 +1,6 @@
-# -*- coding:utf-8 -*-
-###
-# Author: Li Junjie
-# Date: 2020-05-11 17:19:59
-# LastEditors: Li Junjie
-# LastEditTime: 2020-05-11 17:20:00
-# FilePath: \DataProcess_FigurePlot\get_boundary.py
-###
-###
+"""
+找出 map 图的边界
+"""
 
 from scipy.spatial import Delaunay
 import numpy as np
