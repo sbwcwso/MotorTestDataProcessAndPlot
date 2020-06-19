@@ -131,8 +131,11 @@ class OCProcess(DataProcessMixin):
         """
         markdown_text =  textwrap.dedent("""
         # 1. 试验项目
+
         - 电机开路
+
         # 2. 试验结果
+
         - [相关试验数据](result.csv)
         - 试验结果图
         ![试验结果图]({})
@@ -152,7 +155,6 @@ class ASCProcess(DataProcessMixin):
                      'torque_set': 'SO_M_VM [Nm]',
                      'current_u': 'PA1_IRMS_1 [A]',
                      'current_v': 'PA1_IRMS_2 [A]',
-                     # TODO 后缀 _new 的问题
                      'current_w': 'PA1_IRMS_3 [A]',
                      'lew_motor_temperatrue': 'LEW_SO_T_P1 [°C]',
                      'lew_motor_flow': 'LEW_SO_Q_P1 [l/min]',
@@ -217,8 +219,11 @@ class ASCProcess(DataProcessMixin):
         """
         markdown_text =  textwrap.dedent("""
         # 1. 试验项目
+        
         - 电机短路
+
         # 2. 试验结果
+
         - [相关试验数据](result.csv)
         - 试验结果图
         ![试验结果图]({})
@@ -440,17 +445,25 @@ class EffProcess(DataProcessMixin):
         
         markdown_text =  textwrap.dedent("""
         # 1. 试验项目
+
         - 电机效率试验
+
         # 2. 试验结果
+
         ## 2.1 电机效率
+
         - [电机效率二维表]({motor_eff_pivot})
         - 电机效率 map 图
         ![电机效率 map 图]({motor_eff})
+
         ## 2.2 电机控制器效率 
+
         - [电机控制器效率二维表]({peu_eff_pivot})
         - 电机控制器效率 map 图
         ![电机控制器效率 map 图]({peu_eff})
+
         ## 2.3 系统效率
+
         - [系统效率二维表]({sys_eff_pivot})
         - 系统效率 map 图
         ![系统效率 map 图]({sys_eff})

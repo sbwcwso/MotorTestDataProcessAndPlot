@@ -16,7 +16,15 @@ class HandleSingleWorking():
         """
         初始化相关参数
         """
-        self.file_operator = FileOperator(path, result_dir=os.path.join(path, 'result'))
+        # 判断输入的路径还是文件名，据此建立相应的结果文件夹
+        if os.path.isdir(path):
+            result_dir=os.path.join(path, 'result')
+        elif os.path.isfile(path):
+            result_dir = os.path.join(os.path.split(path)[0], 'result')
+        else:
+            raise FileNotFoundError("[Errno 2] No such file or directory")
+
+        self.file_operator = FileOperator(path, result_dir)
         self.test_condition = test_condition
         self.test = TEST_CONDITION[test_condition](self.file_operator, file_type)
 
@@ -36,7 +44,7 @@ if __name__ == "__main__":
     msg = "工况选择：\n1.\topen circuit\n2.\tASC\n3.\tefficiency\n请输入数字："
     test_choice = int(input(msg)) - 1
     test_condition = test_conditions[test_choice]
-    path = input('请输入数据所在的文件路径：')
+    path = input('请输入数据所在的文件夹路径或数据文件的文件名路径：').strip('"')
     msg = "请选择原始文件的格式：\n1.\tcsv file\n2.\texcel file\n3.\terg file\n请输入数字："
     file_choice = int(input(msg)) - 1
     working = HandleSingleWorking(path, test_condition, file_choice)

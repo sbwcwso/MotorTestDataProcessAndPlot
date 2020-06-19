@@ -43,6 +43,9 @@ class GetInformationOfPath:
                 setattr(self, attr_name, [os.path.join(self.path, self.file_name)])
             else:
                 setattr(self, attr_name, [])
+        result = getattr(self, attr_name)
+        if not result:
+            raise FileExistsError("There is no {} file in the given path".format(suffix_name))
         return getattr(self, attr_name)
     
     @property
